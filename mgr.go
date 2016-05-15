@@ -150,12 +150,17 @@ type Map struct {
 
 // NewMap creates a new Map and publishes it.
 func NewMap(name string) *Map {
-	m := &Map{
-		key: name,
-		m:   make(map[string]Var),
-	}
+	m := &Map{key: name}
+	m.Init()
 	Publish(m)
 
+	return m
+}
+
+// Init initializes the map. Must be called before attempting to set a value.
+// Note that NewMap already initializes the map.
+func (m *Map) Init() *Map {
+	m.m = make(map[string]Var)
 	return m
 }
 
