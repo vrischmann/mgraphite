@@ -117,6 +117,35 @@ func TestMap(t *testing.T) {
 	require.Equal(t, "foobar.f 20.3 540\nfoobar.i 100 540\n", buf.String())
 }
 
+func TestMapInMap(t *testing.T) {
+	buf, fn := reset()
+	defer fn()
+
+	var i1 Int
+	i1.Set(10)
+	var i2 Int
+	i2.Set(500)
+	var i3 Int
+	i3.Set(209)
+	var m1 Map
+	m1.Init().Set("i", &i1)
+	var m3 Map
+	m3.Init().Set("d", &i3)
+	var m2 Map
+	m2.Init().Set("i", &i2)
+	m2.Set("m", &m3)
+
+	m := NewMap("foo")
+	m.Set("bar", &m1)
+	m.Set("baz", &m2)
+
+	timeFn = func() int64 { return 600 }
+
+	err := report(nil)
+	require.Nil(t, err)
+	require.Equal(t, "foo.bar.i 10 600\nfoo.baz.i 500 600\nfoo.baz.m.d 209 600\n", buf.String())
+}
+
 func TestMemstats(t *testing.T) {
 	buf, fn := reset()
 	defer fn()
