@@ -46,10 +46,6 @@ type Func func() []KeyValue
 
 func (f Func) Items() []KeyValue { return f() }
 
-func init() {
-	Publish(Func(readMemStats))
-}
-
 // KeyValue represents a single Graphite metric.
 type KeyValue struct {
 	Key   string

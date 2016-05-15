@@ -5,7 +5,14 @@ import (
 	"strconv"
 )
 
-func readMemStats() []KeyValue {
+// MemStats is a function that returns data from runtime.MemStats.
+// It is not published by default; you need to publish it yourself.
+// The reason behind this is because it's not a free operation to read runtime memory statistics.
+//
+// Here is how to publish it:
+//
+//     mgr.publish(mgr.Func(MemStats()))
+func MemStats() []KeyValue {
 	stats := new(runtime.MemStats)
 	runtime.ReadMemStats(stats)
 
