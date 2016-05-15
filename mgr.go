@@ -231,7 +231,7 @@ func Export(config *Config) error {
 	ticker := time.NewTicker(config.Interval)
 	for range ticker.C {
 		if err := report(config); err != nil {
-			log.Printf("unable to report data. err=%v", err)
+			config.Logger.Printf("unable to report data. err=%v", err)
 		}
 	}
 
