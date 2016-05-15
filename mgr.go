@@ -14,15 +14,21 @@ import (
 	"time"
 )
 
+// Config allows you to alter the behaviour of mgr.
 type Config struct {
+	// Interval at which mgr exports data to Graphite.
 	Interval time.Duration
-	Addr     string
-	Logger   func(format string, args ...interface{})
+	// Addr address of the Graphite server (with the port).
+	Addr string
+	// Logger allows you to override the logger used to report errors.
+	Logger func(format string, args ...interface{})
 }
 
 var (
+	// ErrInvalidConfig is returned when the configuration is invalid (missing Graphite address mainly).
 	ErrInvalidConfig = errors.New("invalid config")
 
+	// DiscardLogger can be used as a Logger if you want to silence the errors.
 	DiscardLogger = func(format string, args ...interface{}) {}
 
 	vars struct {
@@ -31,6 +37,11 @@ var (
 	}
 )
 
+type Var interface {
+	Items() []KeyValue
+}
+
+// Func implements Var by calling the function.
 type Func func() []KeyValue
 
 func (f Func) Items() []KeyValue { return f() }
@@ -39,15 +50,13 @@ func init() {
 	Publish(Func(readMemStats))
 }
 
-type Var interface {
-	Items() []KeyValue
-}
-
+// KeyValue represents a single Graphite metric.
 type KeyValue struct {
 	Key   string
 	Value string
 }
 
+// Int is a 64-bit integer variable that satisfies the Var interface.
 type Int struct {
 	key string
 	i   int64
@@ -62,6 +71,7 @@ func (i *Int) Items() []KeyValue {
 func (i *Int) Add(delta int64) { atomic.AddInt64(&i.i, delta) }
 func (i *Int) Set(val int64)   { atomic.StoreInt64(&i.i, val) }
 
+// NewInt creates a Int and publishes it.
 func NewInt(name string) *Int {
 	i := &Int{key: name}
 	Publish(i)
@@ -69,6 +79,7 @@ func NewInt(name string) *Int {
 	return i
 }
 
+// Float is a 64-bit float variable that satisfies the Var interface.
 type Float struct {
 	key string
 	f   uint64
@@ -95,6 +106,7 @@ func (f *Float) Add(delta float64) {
 
 func (f *Float) Set(val float64) { atomic.StoreUint64(&f.f, math.Float64bits(val)) }
 
+// NewFloat creates a Float and publishes it.
 func NewFloat(name string) *Float {
 	f := &Float{key: name}
 	Publish(f)
@@ -132,6 +144,7 @@ func NewFloat(name string) *Float {
 // 	v.s = value
 // }
 
+// Map is a string-to-Var map variable that satisfies the Var interface.
 type Map struct {
 	mu   sync.Mutex
 	key  string
@@ -139,6 +152,7 @@ type Map struct {
 	keys []string
 }
 
+// NewMap creates a new Map and publishes it.
 func NewMap(name string) *Map {
 	m := &Map{
 		key: name,
@@ -192,6 +206,7 @@ func (m *Map) Set(key string, val Var) {
 	sort.Strings(m.keys)
 }
 
+// Do calls f for each entry in the map. The map is locked during the iteration, but existing entries may be concurrently updated.
 func (m *Map) Do(fn func(key string, v Var)) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -202,12 +217,15 @@ func (m *Map) Do(fn func(key string, v Var)) {
 	}
 }
 
+// Publish declares a named exported variable.
 func Publish(v Var) {
 	vars.Lock()
 	vars.l = append(vars.l, v)
 	vars.Unlock()
 }
 
+// Do calls f for each exported variable.
+// The global variable list is locked during the iteration, but existing entries may be concurrently updated.
 func Do(fn func(v Var)) {
 	vars.Lock()
 	for _, v := range vars.l {
@@ -231,7 +249,7 @@ func Export(config *Config) error {
 	ticker := time.NewTicker(config.Interval)
 	for range ticker.C {
 		if err := report(config); err != nil {
-			config.Logger.Printf("unable to report data. err=%v", err)
+			config.Logger("unable to report data. err=%v", err)
 		}
 	}
 
