@@ -11,7 +11,7 @@ import (
 //
 // Here is how to publish it:
 //
-//     mgr.publish(mgr.Func(MemStats()))
+//     mgr.publish(mgr.Func(MemStats))
 func MemStats() []KeyValue {
 	stats := new(runtime.MemStats)
 	runtime.ReadMemStats(stats)
