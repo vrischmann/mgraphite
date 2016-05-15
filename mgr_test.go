@@ -114,7 +114,7 @@ func TestMap(t *testing.T) {
 
 	err := report(nil)
 	require.Nil(t, err)
-	require.Equal(t, "foobar.i 100 540\nfoobar.f 20.3 540\n", buf.String())
+	require.Equal(t, "foobar.f 20.3 540\nfoobar.i 100 540\n", buf.String())
 }
 
 func TestMemstats(t *testing.T) {

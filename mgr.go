@@ -159,13 +159,14 @@ func NewMap(name string) *Map {
 	return m
 }
 
-func flattenMap(prefix string, m map[string]Var) (res []KeyValue) {
-	for k, val := range m {
+func flattenMap(prefix string, m map[string]Var, keys []string) (res []KeyValue) {
+	for _, k := range keys {
+		val := m[k]
 		key := prefix + "." + k
 
 		switch v := val.(type) {
 		case *Map:
-			res = append(res, flattenMap(key, v.m)...)
+			res = append(res, flattenMap(key, v.m, v.keys)...)
 		default:
 			for _, item := range v.Items() {
 				res = append(res, KeyValue{
@@ -182,7 +183,7 @@ func (m *Map) Items() []KeyValue {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	return flattenMap(m.key, m.m)
+	return flattenMap(m.key, m.m, m.keys)
 }
 
 func (m *Map) Set(key string, val Var) {
