@@ -121,7 +121,7 @@ func TestMemstats(t *testing.T) {
 	buf, fn := reset()
 	defer fn()
 
-	vars.l = append(vars.l, Func(readMemStats))
+	vars.l = append(vars.l, Func(MemStats))
 
 	i := NewInt("foobar.i")
 	i.Set(3050)
