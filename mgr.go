@@ -58,14 +58,19 @@ type Int struct {
 	i   int64
 }
 
+// Items returns the value in a 1-size KeyValue slice.
 func (i *Int) Items() []KeyValue {
 	return []KeyValue{{
 		Key:   i.key,
 		Value: strconv.FormatInt(atomic.LoadInt64(&i.i), 10),
 	}}
 }
+
+// Add atomically adds `delta` to the value.
 func (i *Int) Add(delta int64) { atomic.AddInt64(&i.i, delta) }
-func (i *Int) Set(val int64)   { atomic.StoreInt64(&i.i, val) }
+
+// Set atomically sets the value to `val`.
+func (i *Int) Set(val int64) { atomic.StoreInt64(&i.i, val) }
 
 // NewInt creates a Int and publishes it.
 func NewInt(name string) *Int {
@@ -81,6 +86,7 @@ type Float struct {
 	f   uint64
 }
 
+// Items returns the value in a 1-size KeyValue slice.
 func (f *Float) Items() []KeyValue {
 	return []KeyValue{{
 		Key:   f.key,
@@ -88,6 +94,7 @@ func (f *Float) Items() []KeyValue {
 	}}
 }
 
+// Add atomically adds `delta` to the value.
 func (f *Float) Add(delta float64) {
 	for {
 		cur := atomic.LoadUint64(&f.f)
@@ -100,6 +107,7 @@ func (f *Float) Add(delta float64) {
 	}
 }
 
+// Set atomically sets the value to `val`.
 func (f *Float) Set(val float64) { atomic.StoreUint64(&f.f, math.Float64bits(val)) }
 
 // NewFloat creates a Float and publishes it.
@@ -109,36 +117,6 @@ func NewFloat(name string) *Float {
 
 	return f
 }
-
-// TODO(vincent): does this make sense when exporting to graphite ? I don't think so.
-// type String struct {
-// 	sync.RWMutex
-// 	key string
-// 	s   string
-// }
-//
-// func NewString(name string) *String {
-// 	s := &String{key: name}
-// 	Publish(s)
-//
-// 	return s
-// }
-//
-// func (v *String) Items() []KeyValue {
-// 	v.RLock()
-// 	defer v.RUnlock()
-//
-// 	return []KeyValue{{
-// 		Key:   v.key,
-// 		Value: v.s,
-// 	}}
-// }
-//
-// func (v *String) Set(value string) {
-// 	v.Lock()
-// 	defer v.Unlock()
-// 	v.s = value
-// }
 
 // Map is a string-to-Var map variable that satisfies the Var interface.
 type Map struct {
