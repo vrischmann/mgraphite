@@ -209,6 +209,7 @@ func (m *Map) Set(key string, val Var) {
 }
 
 // Do calls f for each entry in the map. The map is locked during the iteration, but existing entries may be concurrently updated.
+// Note that the map is iterated over in sorted keys order.
 func (m *Map) Do(fn func(key string, v Var)) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

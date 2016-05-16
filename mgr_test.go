@@ -3,6 +3,7 @@ package mgr
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -45,6 +46,60 @@ func TestInt(t *testing.T) {
 	err := report(nil)
 	require.Nil(t, err)
 	require.Equal(t, "foobar 50 100\n", buf.String())
+}
+
+func ExampleInt() {
+	requestsCounter := NewInt("requests")
+	requestsCounter.Add(10)
+
+	// It is safe to call Add and Set from multiple concurrent goroutines.
+	var wg sync.WaitGroup
+	wg.Add(1000)
+	for i := int64(0); i < 1000; i++ {
+		go func(i int64) {
+			requestsCounter.Add(i)
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+
+	fmt.Printf("%s\n", requestsCounter.Items()[0].Value)
+	// Output:
+	// 499510
+}
+
+func TestFloat(t *testing.T) {
+	buf, fn := reset()
+	defer fn()
+
+	f := NewFloat("foobar")
+	f.Set(50.1)
+
+	timeFn = func() int64 { return 100 }
+
+	err := report(nil)
+	require.Nil(t, err)
+	require.Equal(t, "foobar 50.1 100\n", buf.String())
+}
+
+func ExampleFloat() {
+	ratio := NewFloat("ratio")
+	ratio.Set(25.8)
+
+	// It is safe to call Add and Set from multiple concurrent goroutines.
+	var wg sync.WaitGroup
+	wg.Add(1000)
+	for i := int64(0); i < 1000; i++ {
+		go func() {
+			ratio.Add(1)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	fmt.Printf("%s\n", ratio.Items()[0].Value)
+	// Output:
+	// 1025.8
 }
 
 func TestConcurrentInt(t *testing.T) {
@@ -115,6 +170,89 @@ func TestMap(t *testing.T) {
 	err := report(nil)
 	require.Nil(t, err)
 	require.Equal(t, "foobar.f 20.3 540\nfoobar.i 100 540\n", buf.String())
+}
+
+func ExampleMap() {
+	httpStats := NewMap("mymap")
+	var (
+		hits200 Int
+		hits500 Int
+		hits404 Int
+	)
+	httpStats.Set("hits200", &hits200)
+	httpStats.Set("hits500", &hits500)
+	httpStats.Set("hits404", &hits404)
+
+	hits200.Set(5404)
+	hits500.Set(3)
+	hits404.Set(30)
+
+	httpStats.Do(func(key string, v Var) {
+		fmt.Printf("%s => %s\n", key, v.Items()[0].Value)
+	})
+	// Output:
+	// hits200 => 5404
+	// hits404 => 30
+	// hits500 => 3
+}
+
+func ExampleMap_Do() {
+	m := NewMap("mymap")
+	var (
+		a Int
+		b Int
+		c Int
+	)
+	m.Set("a", &a)
+	m.Set("b", &b)
+	m.Set("c", &c)
+
+	a.Set(1)
+	b.Set(2)
+	c.Set(3)
+
+	m.Do(func(key string, v Var) {
+		fmt.Printf("%s => %s\n", key, v.Items()[0].Value)
+	})
+	// Output:
+	// a => 1
+	// b => 2
+	// c => 3
+}
+
+func ExampleMap_Init() {
+	m := NewMap("handlers")
+	var (
+		user        Map
+		userLogins  Int
+		userLogouts Int
+
+		cart         Map
+		cartCheckout Int
+		cartClear    Int
+		cartAdd      Int
+	)
+
+	user.Init().Set("logins", &userLogins)
+	user.Set("logouts", &userLogouts)
+
+	cart.Init().Set("checkout", &cartCheckout)
+	cart.Set("clear", &cartClear)
+	cart.Set("add", &cartAdd)
+
+	m.Set("user", &user)
+	m.Set("cart", &cart)
+
+	items := m.Items()
+	for _, item := range items {
+		fmt.Printf("%s => %s\n", item.Key, item.Value)
+	}
+	// Output:
+	// handlers.cart.add => 0
+	// handlers.cart.checkout => 0
+	// handlers.cart.clear => 0
+	// handlers.user.logins => 0
+	// handlers.user.logouts => 0
 }
 
 func TestMapInMap(t *testing.T) {
