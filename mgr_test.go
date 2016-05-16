@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -46,6 +47,14 @@ func TestInt(t *testing.T) {
 	err := report(nil)
 	require.Nil(t, err)
 	require.Equal(t, "foobar 50 100\n", buf.String())
+
+	i.Add(120)
+
+	buf.Reset()
+
+	err = report(nil)
+	require.Nil(t, err)
+	require.Equal(t, "foobar 170 100\n", buf.String())
 }
 
 func ExampleInt() {
@@ -308,4 +317,71 @@ func TestMemstats(t *testing.T) {
 		}
 	}
 	require.True(t, sawFoobar)
+}
+
+type customVar struct {
+	sync.Mutex
+
+	handlers struct {
+		hits struct {
+			c200 int
+			c404 int
+			c500 int
+		}
+		execTime struct {
+			max  int
+			min  int
+			last int
+		}
+	}
+}
+
+func (c *customVar) Items() []KeyValue {
+	c.Lock()
+	defer c.Unlock()
+
+	f := strconv.Itoa
+
+	return []KeyValue{
+		{"handlers.hits.c200", f(c.handlers.hits.c200)},
+		{"handlers.hits.c404", f(c.handlers.hits.c404)},
+		{"handlers.hits.c500", f(c.handlers.hits.c500)},
+		{"handlers.execTime.max", f(c.handlers.execTime.max)},
+		{"handlers.execTime.min", f(c.handlers.execTime.min)},
+		{"handlers.execTime.last", f(c.handlers.execTime.last)},
+	}
+}
+
+func TestCustomVar(t *testing.T) {
+	buf, fn := reset()
+	defer fn()
+
+	var cv customVar
+	cv.handlers.hits.c200 = 10
+	cv.handlers.hits.c404 = 50
+	cv.handlers.hits.c500 = 303
+	cv.handlers.execTime.max = 30000
+	cv.handlers.execTime.min = 300
+	cv.handlers.execTime.last = 10000
+
+	Publish(&cv)
+
+	timeFn = func() int64 { return 606 }
+
+	err := report(nil)
+	require.Nil(t, err)
+
+	scanner := bufio.NewScanner(buf)
+	var lines []string
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	require.Nil(t, scanner.Err())
+
+	require.Equal(t, "handlers.hits.c200 10 606", lines[0])
+	require.Equal(t, "handlers.hits.c404 50 606", lines[1])
+	require.Equal(t, "handlers.hits.c500 303 606", lines[2])
+	require.Equal(t, "handlers.execTime.max 30000 606", lines[3])
+	require.Equal(t, "handlers.execTime.min 300 606", lines[4])
+	require.Equal(t, "handlers.execTime.last 10000 606", lines[5])
 }
