@@ -385,3 +385,28 @@ func TestCustomVar(t *testing.T) {
 	require.Equal(t, "handlers.execTime.min 300 606", lines[4])
 	require.Equal(t, "handlers.execTime.last 10000 606", lines[5])
 }
+
+func TestPrefix(t *testing.T) {
+	buf, fn := reset()
+	defer fn()
+
+	i := NewInt("i")
+	i.Set(303)
+	f := NewFloat("f")
+	f.Set(404.32)
+
+	timeFn = func() int64 { return 606 }
+
+	err := report(&Config{Prefix: "foobar"})
+	require.Nil(t, err)
+
+	scanner := bufio.NewScanner(buf)
+	var lines []string
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	require.Nil(t, scanner.Err())
+
+	require.Equal(t, "foobar.i 303 606", lines[0])
+	require.Equal(t, "foobar.f 404.32 606", lines[1])
+}

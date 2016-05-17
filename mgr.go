@@ -20,6 +20,8 @@ type Config struct {
 	Interval time.Duration
 	// Addr address of the Graphite server (with the port).
 	Addr string
+	// Prefix is used to prefix every metrics reported to Graphite.
+	Prefix string
 	// Logger allows you to override the logger used to report errors.
 	Logger func(format string, args ...interface{})
 }
@@ -258,9 +260,14 @@ func defaulTimeNow() int64 {
 	return time.Now().UnixNano() / int64(time.Second)
 }
 
-func appendMetric(buf *bytes.Buffer, v Var) {
+func appendMetric(config *Config, buf *bytes.Buffer, v Var) {
+	var prefix string
+	if config != nil && config.Prefix != "" {
+		prefix = config.Prefix + "."
+	}
+
 	for _, kv := range v.Items() {
-		buf.WriteString(kv.Key + " " + kv.Value + " ")
+		buf.WriteString(prefix + kv.Key + " " + kv.Value + " ")
 		buf.WriteString(strconv.FormatInt(timeFn(), 10))
 		buf.WriteRune('\n')
 	}
@@ -278,7 +285,7 @@ func report(config *Config) error {
 	buf := bufPool.Get().(*bytes.Buffer)
 	defer bufPool.Put(buf)
 
-	Do(func(v Var) { appendMetric(buf, v) })
+	Do(func(v Var) { appendMetric(config, buf, v) })
 
 	_, err := io.Copy(conn, buf)
 	if err != nil {
