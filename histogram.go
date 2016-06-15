@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type Histogram struct {
@@ -118,6 +119,10 @@ func (h *Histogram) Record(val int64) {
 	h.counter++
 
 	h.mu.Unlock()
+}
+
+func (h *Histogram) RecordSince(t time.Time) {
+	h.Record(int64(time.Since(t)))
 }
 
 func (h *Histogram) Items() []KeyValue {
